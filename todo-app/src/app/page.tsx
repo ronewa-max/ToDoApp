@@ -3,8 +3,6 @@
 
 import { useState } from "react";
 
-type TodoStatus = "pending" | "completed";
-
 type Todo = {
   id: number;
   text: string;
@@ -21,7 +19,7 @@ export default function Home() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
 
-  // Get today's date in YYYY-MM-DD format
+  // Get today's date
   function getTodayDate() {
     const today = new Date();
 
@@ -40,11 +38,10 @@ export default function Home() {
       id: Date.now(),
       text: task.trim(),
       completed: false,
-      dueDate: dueDate,
+      dueDate,
     };
 
     setTodos([...todos, newTodo]);
-
     setTask("");
     setDueDate("");
   }
@@ -70,7 +67,7 @@ export default function Home() {
           ? {
               ...todo,
               text: task.trim(),
-              dueDate: dueDate,
+              dueDate,
             }
           : todo
       )
@@ -116,8 +113,10 @@ export default function Home() {
     setTodos(todos.filter((todo) => !todo.completed));
   }
 
-  // Determine Todo status
-  function getTodoStatus(todo: Todo): TodoStatus | "today" | "overdue" {
+  // Determine task status
+  function getTodoStatus(
+    todo: Todo
+  ): "completed" | "today" | "overdue" | "pending" {
     if (todo.completed) {
       return "completed";
     }
@@ -139,7 +138,7 @@ export default function Home() {
     return "pending";
   }
 
-  // Format date nicely
+  // Format date
   function formatDate(date: string) {
     if (!date) return "";
 
@@ -181,27 +180,63 @@ export default function Home() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-100 px-4 py-10">
+    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-100 px-4 py-8 sm:py-10">
       <div className="mx-auto max-w-3xl">
 
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-2xl text-white shadow-lg">
-            ✓
+        {/* =========================
+            APP BANNER
+        ========================== */}
+        <div className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white shadow-xl sm:p-8">
+
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* Logo + App Name */}
+            <div className="flex items-center gap-4">
+
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl shadow-sm backdrop-blur">
+                ✓
+              </div>
+
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">
+                  My Todo List
+                </h1>
+
+                <p className="mt-1 text-sm text-blue-100 sm:text-base">
+                  Stay organized, manage your time, and get things done.
+                </p>
+              </div>
+
+            </div>
+
+            {/* Today's Date */}
+            <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur sm:text-right">
+
+              <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
+                Today
+              </p>
+
+              <p className="mt-1 font-semibold">
+                {new Date().toLocaleDateString("en-ZA", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+
+            </div>
+
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900">
-            My Todo List
-          </h1>
-
-          <p className="mt-2 text-slate-500">
-            Stay organized, manage your time, and get things done.
-          </p>
         </div>
 
-        {/* Statistics Cards */}
+        {/* =========================
+            STATISTICS
+        ========================== */}
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
 
+          {/* Total */}
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Total
@@ -212,6 +247,7 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Pending */}
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Pending
@@ -222,6 +258,7 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Today */}
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Today
@@ -232,6 +269,7 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Overdue */}
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Overdue
@@ -244,10 +282,14 @@ export default function Home() {
 
         </div>
 
-        {/* Main Card */}
+        {/* =========================
+            MAIN TODO CARD
+        ========================== */}
         <div className="overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-200">
 
-          {/* Add / Edit */}
+          {/* =========================
+              ADD / EDIT TODO
+          ========================== */}
           <div className="border-b border-slate-100 p-6">
 
             {editingId !== null && (
@@ -257,82 +299,84 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3">
+            {/* Task Input */}
+            <input
+              type="text"
+              placeholder={
+                editingId !== null
+                  ? "Edit your task..."
+                  : "What needs to be done?"
+              }
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              onKeyDown={(e) => {
 
-              <input
-                type="text"
-                placeholder={
-                  editingId !== null
-                    ? "Edit your task..."
-                    : "What needs to be done?"
+                if (e.key === "Enter") {
+                  if (editingId !== null) {
+                    saveTodo();
+                  } else {
+                    addTodo();
+                  }
                 }
-                value={task}
-                onChange={(e) => setTask(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    if (editingId !== null) {
-                      saveTodo();
-                    } else {
-                      addTodo();
-                    }
-                  }
 
-                  if (
-                    e.key === "Escape" &&
+                if (
+                  e.key === "Escape" &&
+                  editingId !== null
+                ) {
+                  cancelEdit();
+                }
+
+              }}
+              className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+
+              {/* Due Date */}
+              <div className="flex-1">
+
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Due date
+                </label>
+
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) =>
+                    setDueDate(e.target.value)
+                  }
+                  min={getTodayDate()}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                />
+
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-end gap-2">
+
+                <button
+                  onClick={
                     editingId !== null
-                  ) {
-                    cancelEdit();
+                      ? saveTodo
+                      : addTodo
                   }
-                }}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              />
+                  disabled={!task.trim()}
+                  className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {editingId !== null
+                    ? "Save Changes"
+                    : "Add Task"}
+                </button>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-
-                {/* Date */}
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
-                    Due date
-                  </label>
-
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) =>
-                      setDueDate(e.target.value)
-                    }
-                    min={getTodayDate()}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-
-                {/* Buttons */}
-                <div className="flex items-end gap-2">
-
+                {editingId !== null && (
                   <button
-                    onClick={
-                      editingId !== null
-                        ? saveTodo
-                        : addTodo
-                    }
-                    disabled={!task.trim()}
-                    className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={cancelEdit}
+                    className="rounded-xl border border-slate-200 px-5 py-3 font-medium text-slate-600 transition hover:bg-slate-50"
                   >
-                    {editingId !== null
-                      ? "Save Changes"
-                      : "Add Task"}
+                    Cancel
                   </button>
+                )}
 
-                  {editingId !== null && (
-                    <button
-                      onClick={cancelEdit}
-                      className="rounded-xl border border-slate-200 px-5 py-3 font-medium text-slate-600 transition hover:bg-slate-50"
-                    >
-                      Cancel
-                    </button>
-                  )}
-
-                </div>
               </div>
 
             </div>
@@ -344,7 +388,9 @@ export default function Home() {
 
           </div>
 
-          {/* Filters */}
+          {/* =========================
+              FILTERS
+          ========================== */}
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
 
             <div className="flex rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
@@ -395,7 +441,9 @@ export default function Home() {
 
           </div>
 
-          {/* Todo List */}
+          {/* =========================
+              TODO LIST
+          ========================== */}
           <div className="p-6">
 
             {filteredTodos.length === 0 ? (
@@ -403,23 +451,29 @@ export default function Home() {
               <div className="py-12 text-center">
 
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl">
-                  {filter === "completed" ? "🎉" : "📝"}
+                  {filter === "completed"
+                    ? "🎉"
+                    : "📝"}
                 </div>
 
                 <h2 className="text-lg font-semibold text-slate-800">
+
                   {filter === "completed"
                     ? "No completed tasks"
                     : filter === "active"
                     ? "No active tasks"
                     : "No tasks yet"}
+
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
+
                   {filter === "completed"
                     ? "Complete a task and it will appear here."
                     : filter === "active"
                     ? "You're all caught up!"
                     : "Add your first task above to get started."}
+
                 </p>
 
               </div>
@@ -433,6 +487,7 @@ export default function Home() {
                   const status = getTodoStatus(todo);
 
                   return (
+
                     <div
                       key={todo.id}
                       className={`group rounded-2xl border p-4 transition ${
@@ -465,7 +520,7 @@ export default function Home() {
                           {todo.completed && "✓"}
                         </button>
 
-                        {/* Task Details */}
+                        {/* Task Information */}
                         <div className="min-w-0 flex-1">
 
                           <p
@@ -478,7 +533,6 @@ export default function Home() {
                             {todo.text}
                           </p>
 
-                          {/* Date / Status */}
                           <div className="mt-2 flex flex-wrap items-center gap-2">
 
                             {todo.dueDate && (
@@ -544,6 +598,7 @@ export default function Home() {
                       </div>
 
                     </div>
+
                   );
                 })}
 
