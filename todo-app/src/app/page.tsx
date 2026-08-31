@@ -8,29 +8,96 @@ type Todo = {
   text: string;
   completed: boolean;
   dueDate: string;
+  priority: "Low" | "Medium" | "High";
 };
 
-type Filter = "all" | "active" | "completed";
+type Filter = "All" | "Pending" | "Today" | "Overdue" | "Completed";
 
 export default function Home() {
+  const [activeMenu, setActiveMenu] = useState("Dashboard");
+
   const [task, setTask] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [priority, setPriority] =
+    useState<Todo["priority"]>("Medium");
+
+  const [todos, setTodos] = useState<Todo[]>([
+    {
+      id: 1,
+      text: "Complete project report",
+      completed: false,
+      dueDate: new Date().toISOString().split("T")[0],
+      priority: "High",
+    },
+    {
+      id: 2,
+      text: "Team meeting",
+      completed: false,
+      dueDate: new Date(Date.now() + 86400000)
+        .toISOString()
+        .split("T")[0],
+      priority: "Medium",
+    },
+    {
+      id: 3,
+      text: "Update CV",
+      completed: true,
+      dueDate: new Date().toISOString().split("T")[0],
+      priority: "Low",
+    },
+  ]);
+
+  const [filter, setFilter] = useState<Filter>("All");
+  const [search, setSearch] = useState("");
+
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [editText, setEditText] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editPriority, setEditPriority] =
+    useState<Todo["priority"]>("Medium");
 
-  // Get today's date
-  function getTodayDate() {
-    const today = new Date();
+  const menuItems = [
+    {
+      name: "Dashboard",
+      icon: "▦",
+    },
+    {
+      name: "My Tasks",
+      icon: "✓",
+    },
+    {
+      name: "Calendar",
+      icon: "▣",
+    },
+    {
+      name: "Settings",
+      icon: "⚙",
+    },
+  ];
 
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
+  const today = new Date().toISOString().split("T")[0];
 
-    return `${year}-${month}-${day}`;
-  }
+  const completedCount = todos.filter(
+    (todo) => todo.completed
+  ).length;
 
-  // Add Todo
+  const pendingCount = todos.filter(
+    (todo) => !todo.completed
+  ).length;
+
+  const todayCount = todos.filter(
+    (todo) =>
+      todo.dueDate === today &&
+      !todo.completed
+  ).length;
+
+  const overdueCount = todos.filter(
+    (todo) =>
+      todo.dueDate &&
+      todo.dueDate < today &&
+      !todo.completed
+  ).length;
+
   function addTodo() {
     if (!task.trim()) return;
 
@@ -39,53 +106,16 @@ export default function Home() {
       text: task.trim(),
       completed: false,
       dueDate,
+      priority,
     };
 
     setTodos([...todos, newTodo]);
-    setTask("");
-    setDueDate("");
-  }
-
-  // Start editing
-  function editTodo(id: number) {
-    const todoToEdit = todos.find((todo) => todo.id === id);
-
-    if (!todoToEdit) return;
-
-    setTask(todoToEdit.text);
-    setDueDate(todoToEdit.dueDate);
-    setEditingId(id);
-  }
-
-  // Save edited Todo
-  function saveTodo() {
-    if (!task.trim() || editingId === null) return;
-
-    setTodos(
-      todos.map((todo) =>
-        todo.id === editingId
-          ? {
-              ...todo,
-              text: task.trim(),
-              dueDate,
-            }
-          : todo
-      )
-    );
 
     setTask("");
     setDueDate("");
-    setEditingId(null);
+    setPriority("Medium");
   }
 
-  // Cancel editing
-  function cancelEdit() {
-    setTask("");
-    setDueDate("");
-    setEditingId(null);
-  }
-
-  // Complete / uncomplete
   function toggleTodo(id: number) {
     setTodos(
       todos.map((todo) =>
@@ -99,409 +129,660 @@ export default function Home() {
     );
   }
 
-  // Delete Todo
   function deleteTodo(id: number) {
-    setTodos(todos.filter((todo) => todo.id !== id));
+    setTodos(
+      todos.filter((todo) => todo.id !== id)
+    );
 
     if (editingId === id) {
       cancelEdit();
     }
   }
 
-  // Clear completed
+  function startEdit(todo: Todo) {
+    setEditingId(todo.id);
+    setEditText(todo.text);
+    setEditDate(todo.dueDate);
+    setEditPriority(todo.priority);
+  }
+
+  function saveEdit() {
+    if (!editText.trim() || editingId === null) {
+      return;
+    }
+
+    setTodos(
+      todos.map((todo) =>
+        todo.id === editingId
+          ? {
+              ...todo,
+              text: editText.trim(),
+              dueDate: editDate,
+              priority: editPriority,
+            }
+          : todo
+      )
+    );
+
+    cancelEdit();
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditText("");
+    setEditDate("");
+    setEditPriority("Medium");
+  }
+
   function clearCompleted() {
-    setTodos(todos.filter((todo) => !todo.completed));
+    setTodos(
+      todos.filter((todo) => !todo.completed)
+    );
   }
 
-  // Determine task status
-  function getTodoStatus(
-    todo: Todo
-  ): "completed" | "today" | "overdue" | "pending" {
-    if (todo.completed) {
-      return "completed";
+  function getPriorityStyle(
+    priority: Todo["priority"]
+  ) {
+    if (priority === "High") {
+      return "bg-red-100 text-red-600";
     }
 
-    if (!todo.dueDate) {
-      return "pending";
+    if (priority === "Medium") {
+      return "bg-amber-100 text-amber-600";
     }
 
-    const today = getTodayDate();
-
-    if (todo.dueDate === today) {
-      return "today";
-    }
-
-    if (todo.dueDate < today) {
-      return "overdue";
-    }
-
-    return "pending";
+    return "bg-green-100 text-green-600";
   }
 
-  // Format date
-  function formatDate(date: string) {
-    if (!date) return "";
+  function getDateLabel(dueDate: string) {
+    if (!dueDate) {
+      return "No due date";
+    }
 
-    const dateObject = new Date(`${date}T00:00:00`);
+    if (dueDate === today) {
+      return "Today";
+    }
 
-    return dateObject.toLocaleDateString("en-ZA", {
+    const tomorrow = new Date();
+
+    tomorrow.setDate(
+      tomorrow.getDate() + 1
+    );
+
+    const tomorrowString = tomorrow
+      .toISOString()
+      .split("T")[0];
+
+    if (dueDate === tomorrowString) {
+      return "Tomorrow";
+    }
+
+    if (dueDate < today) {
+      return "Overdue";
+    }
+
+    return new Date(
+      `${dueDate}T00:00:00`
+    ).toLocaleDateString("en-ZA", {
       day: "numeric",
       month: "short",
       year: "numeric",
     });
   }
 
-  // Filter Todos
   const filteredTodos = todos.filter((todo) => {
-    if (filter === "active") {
-      return !todo.completed;
+    const matchesSearch =
+      todo.text
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+    if (!matchesSearch) {
+      return false;
     }
 
-    if (filter === "completed") {
-      return todo.completed;
-    }
+    switch (filter) {
+      case "Pending":
+        return !todo.completed;
 
-    return true;
+      case "Today":
+        return (
+          todo.dueDate === today &&
+          !todo.completed
+        );
+
+      case "Overdue":
+        return (
+          todo.dueDate &&
+          todo.dueDate < today &&
+          !todo.completed
+        );
+
+      case "Completed":
+        return todo.completed;
+
+      case "All":
+      default:
+        return true;
+    }
   });
 
-  // Statistics
-  const completedCount = todos.filter(
-    (todo) => todo.completed
-  ).length;
-
-  const remainingCount = todos.length - completedCount;
-
-  const overdueCount = todos.filter(
-    (todo) => getTodoStatus(todo) === "overdue"
-  ).length;
-
-  const todayCount = todos.filter(
-    (todo) => getTodoStatus(todo) === "today"
-  ).length;
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-100 px-4 py-8 sm:py-10">
-      <div className="mx-auto max-w-3xl">
+    <main className="min-h-screen bg-slate-100">
 
-        {/* =========================
-            APP BANNER
-        ========================== */}
-        <div className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white shadow-xl sm:p-8">
+      {/* SIDEBAR */}
 
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <aside className="fixed left-0 top-0 hidden h-screen w-64 border-r border-slate-200 bg-white lg:block">
 
-            {/* Logo + App Name */}
-            <div className="flex items-center gap-4">
+        <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
 
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl shadow-sm backdrop-blur">
-                ✓
-              </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white shadow-sm">
+            ✓
+          </div>
 
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  My Todo List
-                </h1>
+          <div>
+            <h1 className="font-bold text-slate-900">
+              TaskFlow
+            </h1>
 
-                <p className="mt-1 text-sm text-blue-100 sm:text-base">
-                  Stay organized, manage your time, and get things done.
-                </p>
-              </div>
-
-            </div>
-
-            {/* Today's Date */}
-            <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur sm:text-right">
-
-              <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
-                Today
-              </p>
-
-              <p className="mt-1 font-semibold">
-                {new Date().toLocaleDateString("en-ZA", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
-
-            </div>
-
+            <p className="text-xs text-slate-400">
+              Productivity
+            </p>
           </div>
 
         </div>
 
-        {/* =========================
-            STATISTICS
-        ========================== */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <nav className="p-4">
 
-          {/* Total */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Total
+          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Menu
+          </p>
+
+          <div className="space-y-1">
+
+            {menuItems.map((item) => (
+              <button
+                key={item.name}
+                onClick={() =>
+                  setActiveMenu(item.name)
+                }
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
+                  activeMenu === item.name
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+
+                <span className="text-lg">
+                  {item.icon}
+                </span>
+
+                {item.name}
+
+              </button>
+            ))}
+
+          </div>
+
+        </nav>
+
+        {/* PRODUCTIVITY */}
+
+        <div className="absolute bottom-0 w-full border-t border-slate-100 p-4">
+
+          <div className="rounded-2xl bg-slate-50 p-4">
+
+            <p className="text-xs font-medium text-slate-400">
+              Completion Rate
             </p>
 
             <p className="mt-1 text-2xl font-bold text-slate-900">
-              {todos.length}
-            </p>
-          </div>
-
-          {/* Pending */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Pending
-            </p>
-
-            <p className="mt-1 text-2xl font-bold text-blue-600">
-              {remainingCount}
-            </p>
-          </div>
-
-          {/* Today */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Today
+              {todos.length === 0
+                ? 0
+                : Math.round(
+                    (completedCount /
+                      todos.length) *
+                      100
+                  )}
+              %
             </p>
 
-            <p className="mt-1 text-2xl font-bold text-amber-500">
-              {todayCount}
-            </p>
-          </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
 
-          {/* Overdue */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Overdue
-            </p>
+              <div
+                className="h-full rounded-full bg-blue-600 transition-all"
+                style={{
+                  width: `${
+                    todos.length === 0
+                      ? 0
+                      : (completedCount /
+                          todos.length) *
+                        100
+                  }%`,
+                }}
+              />
 
-            <p className="mt-1 text-2xl font-bold text-red-500">
-              {overdueCount}
-            </p>
+            </div>
+
           </div>
 
         </div>
 
-        {/* =========================
-            MAIN TODO CARD
-        ========================== */}
-        <div className="overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-200">
+      </aside>
 
-          {/* =========================
-              ADD / EDIT TODO
-          ========================== */}
-          <div className="border-b border-slate-100 p-6">
 
-            {editingId !== null && (
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-600">
-                <span className="h-2 w-2 rounded-full bg-blue-600" />
-                Editing task
+      {/* MAIN CONTENT */}
+
+      <div className="lg:ml-64">
+
+        {/* HEADER */}
+
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+
+          <div className="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
+
+            <div>
+
+              <p className="text-sm text-slate-400">
+                Personal Productivity
+              </p>
+
+              <h2 className="text-xl font-bold text-slate-900">
+                {activeMenu}
+              </h2>
+
+            </div>
+
+            <div className="flex items-center gap-3">
+
+              <button className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                🔔
+              </button>
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 font-semibold text-white">
+                RN
               </div>
-            )}
 
-            {/* Task Input */}
-            <input
-              type="text"
-              placeholder={
-                editingId !== null
-                  ? "Edit your task..."
-                  : "What needs to be done?"
-              }
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
-              onKeyDown={(e) => {
+            </div>
 
-                if (e.key === "Enter") {
-                  if (editingId !== null) {
-                    saveTodo();
-                  } else {
+          </div>
+
+        </header>
+
+
+        {/* CONTENT */}
+
+        <div className="p-4 sm:p-6 lg:p-8">
+
+          {/* WELCOME */}
+
+          <section className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white shadow-lg sm:p-8">
+
+            <p className="text-sm font-medium text-blue-100">
+              Good day 👋
+            </p>
+
+            <h1 className="mt-1 text-3xl font-bold">
+              Welcome back!
+            </h1>
+
+            <p className="mt-2 text-blue-100">
+              Stay organized and make progress today.
+            </p>
+
+          </section>
+
+
+          {/* STATISTICS */}
+
+          <section className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+
+              <p className="text-sm text-slate-500">
+                Total Tasks
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-slate-900">
+                {todos.length}
+              </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+
+              <p className="text-sm text-slate-500">
+                Completed
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-slate-900">
+                {completedCount}
+              </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+
+              <p className="text-sm text-slate-500">
+                Today
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-slate-900">
+                {todayCount}
+              </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+
+              <p className="text-sm text-slate-500">
+                Overdue
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-red-500">
+                {overdueCount}
+              </p>
+
+            </div>
+
+          </section>
+
+
+          {/* ADD TASK */}
+
+          <section className="mb-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+
+            <h2 className="font-bold text-slate-900">
+              Add a new task
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Create a task with a date and priority.
+            </p>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
+
+              <input
+                type="text"
+                placeholder="What needs to be done?"
+                value={task}
+                onChange={(e) =>
+                  setTask(e.target.value)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
                     addTodo();
                   }
+                }}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              />
+
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) =>
+                  setDueDate(e.target.value)
                 }
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
 
-                if (
-                  e.key === "Escape" &&
-                  editingId !== null
-                ) {
-                  cancelEdit();
+              <select
+                value={priority}
+                onChange={(e) =>
+                  setPriority(
+                    e.target.value as Todo["priority"]
+                  )
                 }
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="Low">
+                  Low Priority
+                </option>
 
-              }}
-              className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-            />
+                <option value="Medium">
+                  Medium Priority
+                </option>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+                <option value="High">
+                  High Priority
+                </option>
 
-              {/* Due Date */}
-              <div className="flex-1">
+              </select>
 
-                <label className="mb-1 block text-xs font-medium text-slate-500">
-                  Due date
-                </label>
+              <button
+                onClick={addTodo}
+                className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
+              >
+                + Add Task
+              </button>
+
+            </div>
+
+          </section>
+
+
+          {/* TASKS */}
+
+          <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+
+            {/* TASK HEADER */}
+
+            <div className="border-b border-slate-100 p-6">
+
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+                <div>
+
+                  <h2 className="font-bold text-slate-900">
+                    My Tasks
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-400">
+                    Search and manage your tasks.
+                  </p>
+
+                </div>
+
+
+                {/* SEARCH */}
 
                 <input
-                  type="date"
-                  value={dueDate}
+                  type="text"
+                  placeholder="🔎 Search tasks..."
+                  value={search}
                   onChange={(e) =>
-                    setDueDate(e.target.value)
+                    setSearch(e.target.value)
                   }
-                  min={getTodayDate()}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 lg:w-64"
                 />
 
               </div>
 
-              {/* Buttons */}
-              <div className="flex items-end gap-2">
 
-                <button
-                  onClick={
-                    editingId !== null
-                      ? saveTodo
-                      : addTodo
+              {/* FILTERS */}
+
+              <div className="mt-5 flex flex-wrap gap-2">
+
+                {(
+                  [
+                    "All",
+                    "Pending",
+                    "Today",
+                    "Overdue",
+                    "Completed",
+                  ] as Filter[]
+                ).map((item) => {
+
+                  let count = 0;
+
+                  if (item === "All") {
+                    count = todos.length;
                   }
-                  disabled={!task.trim()}
-                  className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {editingId !== null
-                    ? "Save Changes"
-                    : "Add Task"}
-                </button>
 
-                {editingId !== null && (
-                  <button
-                    onClick={cancelEdit}
-                    className="rounded-xl border border-slate-200 px-5 py-3 font-medium text-slate-600 transition hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                )}
+                  if (item === "Pending") {
+                    count = pendingCount;
+                  }
 
-              </div>
+                  if (item === "Today") {
+                    count = todayCount;
+                  }
 
-            </div>
+                  if (item === "Overdue") {
+                    count = overdueCount;
+                  }
 
-            <p className="mt-2 text-xs text-slate-400">
-              Press Enter to{" "}
-              {editingId !== null ? "save" : "add"} a task.
-            </p>
-
-          </div>
-
-          {/* =========================
-              FILTERS
-          ========================== */}
-          <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-
-            <div className="flex rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
-
-              <button
-                onClick={() => setFilter("all")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  filter === "all"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                All
-              </button>
-
-              <button
-                onClick={() => setFilter("active")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  filter === "active"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                Active
-              </button>
-
-              <button
-                onClick={() => setFilter("completed")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  filter === "completed"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                Completed
-              </button>
-
-            </div>
-
-            {completedCount > 0 && (
-              <button
-                onClick={clearCompleted}
-                className="text-sm font-medium text-red-500 transition hover:text-red-600"
-              >
-                Clear completed
-              </button>
-            )}
-
-          </div>
-
-          {/* =========================
-              TODO LIST
-          ========================== */}
-          <div className="p-6">
-
-            {filteredTodos.length === 0 ? (
-
-              <div className="py-12 text-center">
-
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl">
-                  {filter === "completed"
-                    ? "🎉"
-                    : "📝"}
-                </div>
-
-                <h2 className="text-lg font-semibold text-slate-800">
-
-                  {filter === "completed"
-                    ? "No completed tasks"
-                    : filter === "active"
-                    ? "No active tasks"
-                    : "No tasks yet"}
-
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-
-                  {filter === "completed"
-                    ? "Complete a task and it will appear here."
-                    : filter === "active"
-                    ? "You're all caught up!"
-                    : "Add your first task above to get started."}
-
-                </p>
-
-              </div>
-
-            ) : (
-
-              <div className="space-y-3">
-
-                {filteredTodos.map((todo) => {
-
-                  const status = getTodoStatus(todo);
+                  if (item === "Completed") {
+                    count = completedCount;
+                  }
 
                   return (
-
-                    <div
-                      key={todo.id}
-                      className={`group rounded-2xl border p-4 transition ${
-                        status === "overdue"
-                          ? "border-red-200 bg-red-50/50"
-                          : todo.completed
-                          ? "border-slate-100 bg-slate-50"
-                          : "border-slate-200 bg-white hover:border-blue-200 hover:shadow-sm"
+                    <button
+                      key={item}
+                      onClick={() =>
+                        setFilter(item)
+                      }
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        filter === item
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                       }`}
                     >
+                      {item}
 
-                      <div className="flex items-start gap-3">
+                      <span
+                        className={`ml-2 rounded-full px-1.5 py-0.5 text-xs ${
+                          filter === item
+                            ? "bg-white/20 text-white"
+                            : "bg-white text-slate-500"
+                        }`}
+                      >
+                        {count}
+                      </span>
 
-                        {/* Checkbox */}
+                    </button>
+                  );
+                })}
+
+              </div>
+
+            </div>
+
+
+            {/* TASK LIST */}
+
+            <div className="divide-y divide-slate-100">
+
+              {filteredTodos.length === 0 ? (
+
+                <div className="p-12 text-center">
+
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">
+                    🔎
+                  </div>
+
+                  <h3 className="font-semibold text-slate-800">
+                    No tasks found
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-400">
+                    Try another filter or search term.
+                  </p>
+
+                </div>
+
+              ) : (
+
+                filteredTodos.map((todo) => (
+
+                  <div
+                    key={todo.id}
+                    className="p-5 transition hover:bg-slate-50"
+                  >
+
+                    {editingId === todo.id ? (
+
+                      /* EDIT MODE */
+
+                      <div className="space-y-4">
+
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={(e) =>
+                            setEditText(
+                              e.target.value
+                            )
+                          }
+                          autoFocus
+                          className="w-full rounded-xl border border-blue-300 bg-white px-4 py-3 outline-none ring-4 ring-blue-50"
+                        />
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+
+                          <input
+                            type="date"
+                            value={editDate}
+                            onChange={(e) =>
+                              setEditDate(
+                                e.target.value
+                              )
+                            }
+                            className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
+                          />
+
+                          <select
+                            value={editPriority}
+                            onChange={(e) =>
+                              setEditPriority(
+                                e.target.value as Todo["priority"]
+                              )
+                            }
+                            className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
+                          >
+
+                            <option value="Low">
+                              Low Priority
+                            </option>
+
+                            <option value="Medium">
+                              Medium Priority
+                            </option>
+
+                            <option value="High">
+                              High Priority
+                            </option>
+
+                          </select>
+
+                        </div>
+
+                        <div className="flex gap-2">
+
+                          <button
+                            onClick={saveEdit}
+                            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                          >
+                            Save Changes
+                          </button>
+
+                          <button
+                            onClick={cancelEdit}
+                            className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200"
+                          >
+                            Cancel
+                          </button>
+
+                        </div>
+
+                      </div>
+
+                    ) : (
+
+                      /* NORMAL MODE */
+
+                      <div className="flex items-center gap-4">
+
+                        {/* CHECKBOX */}
+
                         <button
                           onClick={() =>
                             toggleTodo(todo.id)
@@ -511,20 +792,22 @@ export default function Home() {
                               ? "Mark task as incomplete"
                               : "Mark task as complete"
                           }
-                          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition ${
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
                             todo.completed
-                              ? "border-blue-600 bg-blue-600 text-white"
+                              ? "border-green-500 bg-green-500 text-white"
                               : "border-slate-300 hover:border-blue-500"
                           }`}
                         >
                           {todo.completed && "✓"}
                         </button>
 
-                        {/* Task Information */}
+
+                        {/* DETAILS */}
+
                         <div className="min-w-0 flex-1">
 
                           <p
-                            className={`break-words text-sm sm:text-base ${
+                            className={`font-medium ${
                               todo.completed
                                 ? "text-slate-400 line-through"
                                 : "text-slate-700"
@@ -535,51 +818,42 @@ export default function Home() {
 
                           <div className="mt-2 flex flex-wrap items-center gap-2">
 
-                            {todo.dueDate && (
-                              <span className="text-xs text-slate-500">
-                                📅 {formatDate(todo.dueDate)}
-                              </span>
-                            )}
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${getPriorityStyle(
+                                todo.priority
+                              )}`}
+                            >
+                              {todo.priority}
+                            </span>
 
-                            {!todo.completed &&
-                              status === "today" && (
-                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                                  Today
-                                </span>
+                            <span
+                              className={`text-xs ${
+                                todo.dueDate < today &&
+                                !todo.completed
+                                  ? "font-semibold text-red-500"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              📅{" "}
+                              {getDateLabel(
+                                todo.dueDate
                               )}
-
-                            {!todo.completed &&
-                              status === "pending" && (
-                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
-                                  Pending
-                                </span>
-                              )}
-
-                            {!todo.completed &&
-                              status === "overdue" && (
-                                <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
-                                  Overdue
-                                </span>
-                              )}
-
-                            {todo.completed && (
-                              <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
-                                Completed
-                              </span>
-                            )}
+                            </span>
 
                           </div>
 
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex shrink-0 items-center gap-1">
+
+                        {/* ACTIONS */}
+
+                        <div className="flex gap-1">
 
                           <button
                             onClick={() =>
-                              editTodo(todo.id)
+                              startEdit(todo)
                             }
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-blue-500 transition hover:bg-blue-50 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            className="rounded-lg px-3 py-2 text-sm font-medium text-blue-500 transition hover:bg-blue-50 hover:text-blue-600"
                           >
                             Edit
                           </button>
@@ -588,7 +862,7 @@ export default function Home() {
                             onClick={() =>
                               deleteTodo(todo.id)
                             }
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600"
                           >
                             Delete
                           </button>
@@ -597,25 +871,47 @@ export default function Home() {
 
                       </div>
 
-                    </div>
+                    )}
 
-                  );
-                })}
+                  </div>
+
+                ))
+
+              )}
+
+            </div>
+
+
+            {/* FOOTER */}
+
+            {completedCount > 0 && (
+
+              <div className="flex justify-end border-t border-slate-100 p-4">
+
+                <button
+                  onClick={clearCompleted}
+                  className="text-sm font-medium text-red-500 hover:text-red-600"
+                >
+                  Clear completed
+                </button>
 
               </div>
 
             )}
 
-          </div>
+          </section>
+
+
+          {/* FOOTER */}
+
+          <p className="mt-8 text-center text-sm text-slate-400">
+            TaskFlow • Personal Productivity Dashboard
+          </p>
 
         </div>
 
-        {/* Footer */}
-        <p className="mt-6 text-center text-sm text-slate-400">
-          Built with Next.js and Tailwind CSS
-        </p>
-
       </div>
+
     </main>
   );
 }
