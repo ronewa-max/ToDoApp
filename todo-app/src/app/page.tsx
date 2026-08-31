@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Todo = {
   id: number;
@@ -21,31 +21,27 @@ export default function Home() {
   const [priority, setPriority] =
     useState<Todo["priority"]>("Medium");
 
-  const [todos, setTodos] = useState<Todo[]>([
-    {
-      id: 1,
-      text: "Complete project report",
-      completed: false,
-      dueDate: new Date().toISOString().split("T")[0],
-      priority: "High",
-    },
-    {
-      id: 2,
-      text: "Team meeting",
-      completed: false,
-      dueDate: new Date(Date.now() + 86400000)
-        .toISOString()
-        .split("T")[0],
-      priority: "Medium",
-    },
-    {
-      id: 3,
-      text: "Update CV",
-      completed: true,
-      dueDate: new Date().toISOString().split("T")[0],
-      priority: "Low",
-    },
-  ]);
+ const [todos, setTodos] = useState<Todo[]>([]);
+const [todosLoaded, setTodosLoaded] = useState(false);
+
+useEffect(() => {
+  const savedTodos = localStorage.getItem("taskflow-todos");
+
+  if (savedTodos) {
+    setTodos(JSON.parse(savedTodos));
+  }
+
+  setTodosLoaded(true);
+}, []);
+
+useEffect(() => {
+  if (!todosLoaded) return;
+
+  localStorage.setItem(
+    "taskflow-todos",
+    JSON.stringify(todos)
+  );
+}, [todos, todosLoaded]);
 
   const [filter, setFilter] = useState<Filter>("All");
   const [search, setSearch] = useState("");
